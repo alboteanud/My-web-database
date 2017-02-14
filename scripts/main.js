@@ -1,28 +1,21 @@
-/**
- * Copyright 2015 Google Inc. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 'use strict';
 
 // Shortcuts to DOM Elements.
-var messageForm = document.getElementById('message-form');
-var messageInput = document.getElementById('new-post-message');
-var titleInput = document.getElementById('new-post-title');
+// var messageForm = document.getElementById('message-form');
+// var messageInput = document.getElementById('new-post-message');
+// var titleInput = document.getElementById('new-post-title');
+
+var contactForm = document.getElementById('contact-form');
+var nameInput = document.getElementById('new-contact-name');
+var phoneInput = document.getElementById('new-contact-phone');
+var emailInput = document.getElementById('new-contact-email');
+var noteInput = document.getElementById('new-contact-note');
+var dateInput = document.getElementById('new-contact-date');
+
 var signInButton = document.getElementById('sign-in-button');
 var signOutButton = document.getElementById('sign-out-button');
 var splashPage = document.getElementById('page-splash');
-var addPost = document.getElementById('add-post');
+var addContactSection = document.getElementById('add-contact-section');
 var addButton = document.getElementById('add');
 var recentPostsSection = document.getElementById('recent-posts-list');
 var userPostsSection = document.getElementById('user-posts-list');
@@ -32,37 +25,47 @@ var myPostsMenuButton = document.getElementById('menu-my-posts');
 var myTopPostsMenuButton = document.getElementById('menu-my-top-posts');
 var listeningFirebaseRefs = [];
 
-/**
- * Saves a new post to the Firebase DB.
- */
-// [START write_fan_out]
-function writeNewPost(uid, username, picture, title, body) {
-    // A post entry.
-    var postData = {
-        author: username,
-        uid: uid,
-        body: body,
-        title: title,
-        starCount: 0,
-        authorPic: picture
+// function writeNewPost(uid, username, picture, title, body) {
+//     // A post entry.
+//     var postData = {
+//         author: username,
+//         uid: uid,
+//         body: body,
+//         title: title,
+//         starCount: 0,
+//         authorPic: picture
+//     };
+//
+//     // Get a key for a new Post.
+//     var newPostKey = firebase.database().ref().child('posts').push().key;
+//
+//     // Write the new post's data simultaneously in the posts list and the user's post list.
+//     var updates = {};
+//     updates['/posts/' + newPostKey] = postData;
+//     updates['/user-posts/' + uid + '/' + newPostKey] = postData;
+//     return firebase.database().ref().update(updates);
+// }
+
+function writeNewContact(uid, name, phone, email, note, date) {
+    var contactData = {
+        name: name,
+        phone: phone,
+        email: email,
+        note: note,
+        return_date_millis: date
     };
+    var contactNameDate = {
+        name: name,
+        return_date_millis: date
+    };
+    var newContactKey = firebase.database().ref().child(uid + '/contacts').push().key;
 
-    // Get a key for a new Post.
-    var newPostKey = firebase.database().ref().child('posts').push().key;
-
-    // Write the new post's data simultaneously in the posts list and the user's post list.
     var updates = {};
-    updates['/posts/' + newPostKey] = postData;
-    updates['/user-posts/' + uid + '/' + newPostKey] = postData;
-
+    updates[uid + '/contacts/' + newContactKey] = contactData;
+    updates[uid + '/names_dates/' + newContactKey] = contactNameDate;
     return firebase.database().ref().update(updates);
 }
-// [END write_fan_out]
 
-/**
- * Star/unstar post.
- */
-// [START post_stars_transaction]
 function toggleStar(postRef, uid) {
     postRef.transaction(function(post) {
         if (post) {
@@ -80,16 +83,12 @@ function toggleStar(postRef, uid) {
         return post;
     });
 }
-// [END post_stars_transaction]
 
-/**
- * Creates a post element.
- */
-function createPostElement(postId, title, text, author, authorId, authorPic) {
+function createContactElement(contactID, title, text, author, authorId, authorPic) {
     var uid = firebase.auth().currentUser.uid;
 
     var html =
-        '<div class="post post-' + postId + ' mdl-cell mdl-cell--12-col ' +
+        '<div class="post post-' + contactID + ' mdl-cell mdl-cell--12-col ' +
         'mdl-cell--6-col-tablet mdl-cell--4-col-desktop mdl-grid mdl-grid--no-spacing">' +
         '<div class="mdl-card mdl-shadow--2dp">' +
         '<div class="mdl-card__title mdl-color--light-blue-600 mdl-color-text--white">' +
@@ -138,8 +137,7 @@ function createPostElement(postId, title, text, author, authorId, authorPic) {
         (authorPic || './silhouette.jpg') + '")';
 
     // Listen for comments.
-    // [START child_event_listener_recycler]
-    var commentsRef = firebase.database().ref('post-comments/' + postId);
+    var commentsRef = firebase.database().ref('post-comments/' + contactID);
     commentsRef.on('child_added', function(data) {
         addCommentElement(postElement, data.key, data.val().text, data.val().author);
     });
@@ -151,18 +149,15 @@ function createPostElement(postId, title, text, author, authorId, authorPic) {
     commentsRef.on('child_removed', function(data) {
         deleteComment(postElement, data.key);
     });
-    // [END child_event_listener_recycler]
 
     // Listen for likes counts.
-    // [START post_value_event_listener]
-    var starCountRef = firebase.database().ref('posts/' + postId + '/starCount');
+    var starCountRef = firebase.database().ref('posts/' + contactID + '/starCount');
     starCountRef.on('value', function(snapshot) {
         updateStarCount(postElement, snapshot.val());
     });
-    // [END post_value_event_listener]
 
     // Listen for the starred status.
-    var starredStatusRef = firebase.database().ref('posts/' + postId + '/stars/' + uid)
+    var starredStatusRef = firebase.database().ref('posts/' + contactID + '/stars/' + uid)
     starredStatusRef.on('value', function(snapshot) {
         updateStarredByCurrentUser(postElement, snapshot.val());
     });
@@ -175,15 +170,15 @@ function createPostElement(postId, title, text, author, authorId, authorPic) {
     // Create new comment.
     addCommentForm.onsubmit = function(e) {
         e.preventDefault();
-        createNewComment(postId, firebase.auth().currentUser.displayName, uid, commentInput.value);
+        createNewComment(contactID, firebase.auth().currentUser.displayName, uid, commentInput.value);
         commentInput.value = '';
         commentInput.parentElement.MaterialTextfield.boundUpdateClassesHandler();
     };
 
     // Bind starring action.
     var onStarClicked = function() {
-        var globalPostRef = firebase.database().ref('/posts/' + postId);
-        var userPostRef = firebase.database().ref('/user-posts/' + authorId + '/' + postId);
+        var globalPostRef = firebase.database().ref('/posts/' + contactID);
+        var userPostRef = firebase.database().ref('/user-posts/' + authorId + '/' + contactID);
         toggleStar(globalPostRef, uid);
         toggleStar(userPostRef, uid);
     };
@@ -192,12 +187,11 @@ function createPostElement(postId, title, text, author, authorId, authorPic) {
 
     return postElement;
 }
+// end of function createContactElement
 
-/**
- * Writes a new comment for the given post.
- */
-function createNewComment(postId, username, uid, text) {
-    firebase.database().ref('post-comments/' + postId).push({
+
+function createNewComment(contactID, username, uid, text) {
+    firebase.database().ref('post-comments/' + contactID).push({
         text: text,
         author: username,
         uid: uid
@@ -255,53 +249,53 @@ function deleteComment(postElement, id) {
     comment.parentElement.removeChild(comment);
 }
 
-  function createAccount() {
-      var email = document.getElementById('input-email-sign-in').value;
-      var password = document.getElementById('input-password-sign-in').value;
-      if (email.length < 4) {
-          alert('Please enter an email address.');
-          return;
-      }
-      if (password.length < 4) {
-          alert('Please enter a password.');
-          return;
-      }
-      firebase.auth().createUserWithEmailAndPassword(email, password).catch(function(error) {
-          var errorCode = error.code;
-          var errorMessage = error.message;
-          if (errorCode == 'auth/weak-password') {
-              alert('The password is too weak.');
-          } else {
-              alert(errorMessage);
-          }
-          console.log(error);
-      });
-
-  }
-
-function signIn() {
-      var email = document.getElementById('input-email-sign-in').value;
-      var password = document.getElementById('input-password-sign-in').value;
-      if (email.length < 4) {
+function createAccount() {
+    var email = document.getElementById('input-email-sign-in').value;
+    var password = document.getElementById('input-password-sign-in').value;
+    if (email.length < 4) {
         alert('Please enter an email address.');
         return;
-      }
-      if (password.length < 4) {
+    }
+    if (password.length < 4) {
         alert('Please enter a password.');
         return;
-      }
+    }
+    firebase.auth().createUserWithEmailAndPassword(email, password).catch(function(error) {
+        var errorCode = error.code;
+        var errorMessage = error.message;
+        if (errorCode == 'auth/weak-password') {
+            alert('The password is too weak.');
+        } else {
+            alert(errorMessage);
+        }
+        console.log(error);
+    });
 
-      firebase.auth().signInWithEmailAndPassword(email, password).catch(function(error) {
+}
+
+function signIn() {
+    var email = document.getElementById('input-email-sign-in').value;
+    var password = document.getElementById('input-password-sign-in').value;
+    if (email.length < 4) {
+        alert('Please enter an email address.');
+        return;
+    }
+    if (password.length < 4) {
+        alert('Please enter a password.');
+        return;
+    }
+
+    firebase.auth().signInWithEmailAndPassword(email, password).catch(function(error) {
         var errorCode = error.code;
         var errorMessage = error.message;
         if (errorCode === 'auth/wrong-password') {
-          alert('Wrong password.');
+            alert('Wrong password.');
         } else {
-          alert(errorMessage);
+            alert(errorMessage);
         }
         console.log(error);
-      });
-  }
+    });
+}
 
 /**
  * Starts listening for new posts and populates posts lists.
@@ -315,13 +309,16 @@ function startDatabaseQueries() {
     var recentPostsRef = firebase.database().ref('posts').limitToLast(100);
     // [END recent_posts_query]
     var userPostsRef = firebase.database().ref('user-posts/' + myUserId);
+    var contactsRef = firebase.database().ref(myUserId + '/contacts');
 
     var fetchPosts = function(postsRef, sectionElement) {
         postsRef.on('child_added', function(data) {
             var author = data.val().author || 'Anonymous';
             var containerElement = sectionElement.getElementsByClassName('posts-container')[0];
             containerElement.insertBefore(
-                createPostElement(data.key, data.val().title, data.val().body, author, data.val().uid, data.val().authorPic),
+                // createContactElement(data.key, data.val().title, data.val().body, author, data.val().uid, data.val().authorPic),
+                // containerElement.firstChild);
+                createContactElement(data.key, data.val().name, data.val().phone, data.val().email, data.val().note, data.val().return_date_millis),
                 containerElement.firstChild);
         });
         postsRef.on('child_changed', function(data) {
@@ -340,28 +337,27 @@ function startDatabaseQueries() {
     };
 
     // Fetching and displaying all posts of each sections.
-    fetchPosts(topUserPostsRef, topUserPostsSection);
-    fetchPosts(recentPostsRef, recentPostsSection);
-    fetchPosts(userPostsRef, userPostsSection);
+    // fetchPosts(topUserPostsRef, topUserPostsSection);
+    // fetchPosts(recentPostsRef, recentPostsSection);
+    // fetchPosts(userPostsRef, userPostsSection);
+        fetchPosts(contactsRef, userPostsSection);
 
     // Keep track of all Firebase refs we are listening to.
-    listeningFirebaseRefs.push(topUserPostsRef);
-    listeningFirebaseRefs.push(recentPostsRef);
-    listeningFirebaseRefs.push(userPostsRef);
+    // listeningFirebaseRefs.push(topUserPostsRef);
+    // listeningFirebaseRefs.push(recentPostsRef);
+    // listeningFirebaseRefs.push(userPostsRef);
+      listeningFirebaseRefs.push(contactsRef);
 }
 
 /**
  * Writes the user's data to the database.
  */
-// [START basic_write]
-function writeUserData(userId, name, email, imageUrl) {
-    firebase.database().ref('users/' + userId).set({
-        username: name,
+// function writeUserData(userId, name, email, imageUrl) {
+  function writeUserData(userId, email) {
+    firebase.database().ref(userId + '/-user').set({
         email: email,
-        profile_picture: imageUrl
     });
 }
-// [END basic_write]
 
 /**
  * Cleanups the UI and removes all Firebase listeners.
@@ -398,7 +394,8 @@ function onAuthStateChanged(user) {
     if (user) {
         currentUID = user.uid;
         splashPage.style.display = 'none';
-        writeUserData(user.uid, user.displayName, user.email, user.photoURL);
+        // writeUserData(user.uid, user.displayName, user.email, user.photoURL);
+        writeUserData(user.uid, user.email);
         startDatabaseQueries();
     } else {
         // Set currentUID to null.
@@ -411,19 +408,19 @@ function onAuthStateChanged(user) {
 /**
  * Creates a new post for the current user.
  */
-function newPostForCurrentUser(title, text) {
-    // [START single_value_read]
-    var userId = firebase.auth().currentUser.uid;
-    return firebase.database().ref('/users/' + userId).once('value').then(function(snapshot) {
-        var username = snapshot.val().username;
-        var email = snapshot.val().email;
-        // [START_EXCLUDE]
-        return writeNewPost(firebase.auth().currentUser.uid, email,
-            firebase.auth().currentUser.photoURL,
-            title, text);
-        // [END_EXCLUDE]
-    });
-    // [END single_value_read]
+// function newPostForCurrentUser(title, text) {
+//     // [START single_value_read]
+//     var userId = firebase.auth().currentUser.uid;
+//     return firebase.database().ref('/users/' + userId).once('value').then(function(snapshot) {
+//         var username = snapshot.val().username;
+//         var email = snapshot.val().email;
+//         return writeNewPost(firebase.auth().currentUser.uid, email,
+//             firebase.auth().currentUser.photoURL, title, text);
+//     });
+// }
+
+function newContactForCurrentUser(name, phone, email, note, date) {
+        return writeNewContact(firebase.auth().currentUser.uid, name, phone, email, note, date);
 }
 
 /**
@@ -433,7 +430,7 @@ function showSection(sectionElement, buttonElement) {
     recentPostsSection.style.display = 'none';
     userPostsSection.style.display = 'none';
     topUserPostsSection.style.display = 'none';
-    addPost.style.display = 'none';
+    addContactSection.style.display = 'none';
     recentMenuButton.classList.remove('is-active');
     myPostsMenuButton.classList.remove('is-active');
     myTopPostsMenuButton.classList.remove('is-active');
@@ -464,18 +461,38 @@ window.addEventListener('load', function() {
     firebase.auth().onAuthStateChanged(onAuthStateChanged);
 
     // Saves message on form submit.
-    messageForm.onsubmit = function(e) {
-        e.preventDefault();
-        var text = messageInput.value;
-        var title = titleInput.value;
-        if (text && title) {
-            newPostForCurrentUser(title, text).then(function() {
-                myPostsMenuButton.click();
-            });
-            messageInput.value = '';
-            titleInput.value = '';
-        }
-    };
+    // messageForm.onsubmit = function(e) {
+    //     e.preventDefault();
+    //     var text = messageInput.value;
+    //     var title = titleInput.value;
+    //     if (text && title) {
+    //         newPostForCurrentUser(title, text).then(function() {
+    //             myPostsMenuButton.click();
+    //         });
+    //         messageInput.value = '';
+    //         titleInput.value = '';
+    //     }
+    // };
+
+      contactForm.onsubmit = function(e) {
+          e.preventDefault();
+          var name = nameInput.value;
+          var phone = phoneInput.value;
+          var email = emailInput.value;
+          var note = noteInput.value;
+          var date = dateInput.value;
+          if (name) {
+              newContactForCurrentUser(name, phone, email, note, date).then(function() {
+                  myPostsMenuButton.click();
+              });
+              nameInput.value = '';
+              phoneInput.value = '';
+              emailInput.value = '';
+              noteInput.value = '';
+              dateInput.value = '';
+          }
+      };
+
 
     // Bind menu buttons.
     recentMenuButton.onclick = function() {
@@ -488,9 +505,14 @@ window.addEventListener('load', function() {
         showSection(topUserPostsSection, myTopPostsMenuButton);
     };
     addButton.onclick = function() {
-        showSection(addPost);
-        messageInput.value = '';
-        titleInput.value = '';
+        showSection(addContactSection);
+        // messageInput.value = '';
+        // titleInput.value = '';
+            nameInput.value = '';
+            phoneInput.value = '';
+            emailInput.value = '';
+            noteInput.value = '';
+            dateInput.value = '';
     };
     recentMenuButton.onclick();
 }, false);
